@@ -1,47 +1,31 @@
-import axios from "axios";
-
-const API =
-  "http://localhost:3001/api/channels";
+import api from "./api";
 
 export async function getChannels() {
-  const res =
-    await axios.get(API);
+  const res = await api.get("/channels");
 
   return res.data;
 }
 
-export async function createChannel(
-  channel
-) {
-  const res =
-    await axios.post(
-      API,
-      channel
-    );
+export async function createChannel(channel) {
+  const res = await api.post("/channels", channel);
 
   return res.data;
 }
 
-export async function updateChannel(
-  id,
-  channel
-) {
-  const res =
-    await axios.put(
-      `${API}/${id}`,
-      channel
-    );
+export async function updateChannel(id, channel) {
+  const res = await api.put(`/channels/${id}`, channel);
 
   return res.data;
 }
 
-export async function deleteChannel(
-  id
-) {
-  const res =
-    await axios.delete(
-      `${API}/${id}`
-    );
+export async function setChannelEnabled(id, enabled) {
+  const res = await api.patch(`/channels/${id}/enabled`, { enabled });
+
+  return res.data;
+}
+
+export async function deleteChannel(id) {
+  const res = await api.delete(`/channels/${id}`);
 
   return res.data;
 }

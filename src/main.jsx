@@ -13,38 +13,73 @@ import Layout from "./components/Layout";
 import EventsPage from "./pages/EventsPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
+import UserManagementPage from "./pages/UserManagementPage";
+import { RoleProtectedRoute } from "./components/auth/ProtectedRoute";
+import AlertRecipientsPage from "./pages/AlertRecipientsPage";
+import InfrastructurePage from "./pages/InfrastructurePage";
+import InfrastructureTargetPage from "./pages/InfrastructureTargetPage";
 
 const router = createBrowserRouter([
   {
+    path: "/login",
+    element: <LoginPage />,
+  },
+
+  {
     path: "/",
-    element: <Layout />,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
+
     children: [
       {
         index: true,
-        element: (
-          <ProtectedRoute>
-            <DashboardPage />
-          </ProtectedRoute>
-        ),
+        element: <DashboardPage />,
       },
+
       {
         path: "channels",
+        element: <ChannelsPage />,
+      },
+
+      {
+        path: "events",
+        element: <EventsPage />,
+      },
+      {
+        path: "infrastructure",
         element: (
-          <ProtectedRoute>
-            <ChannelsPage />
-          </ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
+            <InfrastructurePage />
+          </RoleProtectedRoute>
         ),
       },
       {
-        path: "login",
-        element: <LoginPage />,
-      },
-      {
-        path: "events",
+        path: "infrastructure/targets/:id",
         element: (
-          <ProtectedRoute>
-            <EventsPage />
-          </ProtectedRoute>
+          <RoleProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
+            <InfrastructureTargetPage />
+          </RoleProtectedRoute>
+        ),
+      },
+
+      {
+        path: "users",
+        element: (
+          <RoleProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
+            <UserManagementPage />
+          </RoleProtectedRoute>
+        ),
+      },
+
+      {
+        path: "alert-recipients",
+        element: (
+          <RoleProtectedRoute allowedRoles={["SUPER_ADMIN"]}>
+            <AlertRecipientsPage />
+          </RoleProtectedRoute>
         ),
       },
     ],

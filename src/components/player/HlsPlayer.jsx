@@ -10,6 +10,12 @@ export default function HlsPlayer({ url }) {
     if (Hls.isSupported()) {
       hls = new Hls({
         lowLatencyMode: true,
+        xhrSetup: (xhr) => {
+          const token = import.meta.env.VITE_HLS_TOKEN;
+          if (token) {
+            xhr.setRequestHeader("X-Origin-Auth", token);
+          }
+        },
       });
 
       hls.loadSource(url);

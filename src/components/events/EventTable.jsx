@@ -1,4 +1,6 @@
 export default function EventTable({ events }) {
+//   console.log(events[0]?.created_at);
+//   console.log(new Date(events[0]?.created_at));
   return (
     <div className="overflow-x-auto">
       <table className="table table-zebra">
@@ -16,7 +18,11 @@ export default function EventTable({ events }) {
         <tbody>
           {events.map((event) => (
             <tr key={event.id}>
-              <td>{new Date(event.created_at).toLocaleString()}</td>
+              <td>
+                {new Date(event.created_at).toLocaleString("en-BD", {
+                  timeZone: "Asia/Dhaka",
+                })}
+              </td>
 
               <td>{event.channel_name}</td>
 

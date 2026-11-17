@@ -1,106 +1,191 @@
-import { MdOutlineSensors, MdOutlineLocationOn, MdSpeed } from "react-icons/md";
+import {
+  MdBusiness,
+  MdLocationOn,
+  MdRestartAlt,
+  MdSpeed,
+} from "react-icons/md";
+import StatusDot from "../common/StatusDot";
+import { getStatusColor } from "../../utils/statusStyles";
 
-export default function StreamCard({ stream, onClick }) {
-  // Determines the ambient background glow based on stream health
-  const getAmbientGlow = (status) => {
-    switch (status) {
-      case "UP":
-        return "bg-success/20";
-      case "DOWN":
-        return "bg-error/20";
-      default:
-        return "bg-warning/20";
-    }
-  };
+function formatTime(value) {
+  if (!value) return null;
 
-  // Determines the specific text color for the status indicator
-  const getStatusTextColor = (status) => {
-    switch (status) {
-      case "UP":
-        return "text-success";
-      case "DOWN":
-        return "text-error";
-      default:
-        return "text-warning";
-    }
-  };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getStatusMessage(stream) {
+  if (stream.status === "DOWN" && stream.error) return stream.error;
+  if (stream.status === "FROZEN") {
+    return `No new segment for ${stream.freezeCount || 0} checks`;
+  }
+  if (stream.status === "DEGRADED") return "Some stream variants are missing";
+  if (stream.status === "DOWN") return "Stream is currently unavailable";
+  if (stream.status === "UP") return "All systems operational";
+  return "Waiting for stream status";
+}
+
+export default function StreamCard({
+  stream,
+  onClick,
+  onRestart,
+  restarting = false,
+}) {
+  const statusColor = getStatusColor(stream.status);
+  const checkedAt = formatTime(stream.checkedAt);
+  const hasBitrate = typeof stream.bitrate === "number" && stream.bitrate > 0;
+  const variants = stream.variants || [];
+  const isTbsMapped = (stream.tbs_mappings || []).length > 0;
 
   return (
-    <div
-      onClick={() => onClick(stream)}
-      className="group relative overflow-hidden flex flex-col bg-base-100 rounded-[24px] border border-base-200/60 shadow-sm hover:shadow-xl hover:border-base-300 hover:-translate-y-1 transition-all duration-400 ease-out cursor-pointer p-6"
-    >
-      {/* Ambient Status Glow (Top Right) */}
-      <div
-        className={`absolute -top-12 -right-12 w-36 h-36 blur-[40px] rounded-full pointer-events-none transition-colors duration-500 ${getAmbientGlow(stream.status)}`}
+    <article className="group relative flex w-full flex-col overflow-hidden rounded-xl border border-base-300/70 bg-base-100 text-left shadow-sm transition-colors hover:border-base-content/25 hover:shadow-md">
+      <button
+        type="button"
+        onClick={() => onClick?.(stream)}
+        aria-label={`View ${stream.name || "channel"} details, status ${stream.status || "unknown"}`}
+        className="relative flex w-full flex-col text-left focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary"
+      >
+      <span
+        className="absolute inset-x-0 top-0 h-0.5"
+        style={{ backgroundColor: statusColor }}
+        aria-hidden="true"
       />
 
-      {/* Header: Logo & Status */}
-      <div className="relative z-10 flex justify-between items-start mb-5">
-        <div className="w-14 h-14 rounded-[16px] bg-base-200/40 flex items-center justify-center p-1 border border-base-200/80 shadow-sm backdrop-blur-sm group-hover:scale-105 transition-transform duration-300">
-          <img
-            src={stream.logo_url || "https://placehold.co/100x100"}
-            alt={stream.name}
-            className="w-full h-full object-contain"
-          />
-        </div>
-
-        {/* Minimalist Status Indicator */}
-        <div className="flex items-center gap-2 bg-base-100/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-base-200 shadow-sm">
-          <span className="relative flex h-2 w-2">
-            {stream.status === "UP" && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
+      <div className="flex min-w-0 flex-col gap-1.5 px-3 py-2.5 pt-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-lg bg-white text-sm font-bold uppercase text-base-content/60 ring-1 ring-base-300 shadow-sm">
+            <span aria-hidden="true">{stream.name?.trim()?.[0] || "?"}</span>
+            {stream.logo_url && (
+              <img
+                src={stream.logo_url}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full bg-white object-contain p-0.5"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
             )}
-            <span
-              className={`relative inline-flex rounded-full h-2 w-2 ${getStatusTextColor(stream.status).replace("text-", "bg-")}`}
-            ></span>
-          </span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-sm font-semibold leading-4 text-base-content">
+              {stream.name || "Unnamed channel"}
+            </h2>
+            <p className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] leading-3 text-base-content/55">
+              {stream.broadcaster && (
+                <>
+                  <MdBusiness className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{stream.broadcaster}</span>
+                </>
+              )}
+              {stream.location && (
+                <>
+                  {stream.broadcaster && <span aria-hidden="true">·</span>}
+                  <MdLocationOn
+                    className="h-3 w-3 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span className="truncate">{stream.location}</span>
+                </>
+              )}
+              {!stream.broadcaster && !stream.location && (
+                <span className="truncate">
+                  {checkedAt ? `Checked ${checkedAt}` : "Not checked"}
+                </span>
+              )}
+            </p>
+          </div>
           <span
-            className={`text-xs font-bold tracking-wider uppercase ${getStatusTextColor(stream.status)}`}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
+            style={{
+              backgroundColor: `${statusColor}18`,
+              color: statusColor,
+            }}
           >
-            {stream.status}
+            <StatusDot status={stream.status} size="sm" />
+            {stream.status || "UNKNOWN"}
           </span>
         </div>
-      </div>
 
-      {/* Body: Title & Metadata Pills */}
-      <div className="relative z-10 flex-1 mb-2">
-        <h2 className="text-lg font-bold tracking-tight text-base-content group-hover:text-primary transition-colors mb-4 line-clamp-1">
-          {stream.name}
-        </h2>
-
-        <div className="flex flex-wrap gap-2">
-          <div className="inline-flex items-center gap-1.5 bg-base-200/50 text-base-content/70 px-2.5 py-1 rounded-lg text-xs font-medium border border-base-200/50">
-            <MdOutlineSensors className="w-3.5 h-3.5 text-base-content/40" />
-            <span className="truncate max-w-[100px]">{stream.broadcaster}</span>
-          </div>
-          <div className="inline-flex items-center gap-1.5 bg-base-200/50 text-base-content/70 px-2.5 py-1 rounded-lg text-xs font-medium border border-base-200/50">
-            <MdOutlineLocationOn className="w-3.5 h-3.5 text-base-content/40" />
-            <span className="truncate max-w-[100px]">{stream.location}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer: Prominent Metric Focus */}
-      <div className="relative z-10 pt-4 mt-auto border-t border-base-200/60 flex items-end justify-between">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-bold text-base-content/40 uppercase tracking-widest mb-0.5">
-            Network Bitrate
+        <div className="flex min-w-0 items-center gap-2 border-t border-base-200 pt-1.5 pr-8 text-[10px] leading-3 text-base-content/60">
+          {hasBitrate ? (
+            <span
+              className={`shrink-0 font-semibold tabular-nums ${
+                stream.bitrateStatus === "LOW"
+                  ? "text-warning"
+                  : "text-base-content/75"
+              }`}
+              title="Bitrate"
+            >
+              <MdSpeed className="mr-0.5 inline h-3 w-3" aria-hidden="true" />
+              {new Intl.NumberFormat().format(stream.bitrate)} kbps
+            </span>
+          ) : (
+            <span className="shrink-0">No bitrate</span>
+          )}
+          {stream.segmentCount > 0 && (
+            <span className="shrink-0">{stream.segmentCount} seg</span>
+          )}
+          <span
+            className="min-w-0 flex-1 truncate"
+            title={getStatusMessage(stream)}
+          >
+            {getStatusMessage(stream)}
           </span>
-          <div className="flex items-baseline gap-1">
-            <span className="text-xl font-extrabold text-base-content tracking-tight leading-none">
-              {stream.bitrate || 0}
+          {checkedAt && (
+            <span className="shrink-0 tabular-nums text-base-content/45">
+              {checkedAt}
             </span>
-            <span className="text-xs font-semibold text-base-content/50">
-              kbps
-            </span>
-          </div>
+          )}
         </div>
 
-        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-content transition-colors duration-300">
-          <MdSpeed className="w-4 h-4 text-primary group-hover:text-primary-content transition-colors" />
-        </div>
+        {variants.length > 0 && (
+          <ul className="flex flex-wrap gap-1">
+            {variants.map((variant) => (
+              <li
+                key={variant.name}
+                className="inline-flex items-center gap-1 rounded bg-base-200/70 px-1 py-0.5 text-[9px] leading-3 text-base-content/70"
+              >
+                <StatusDot status={variant.status} size="sm" />
+                <span>{variant.name}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-    </div>
+      </button>
+      <button
+        type="button"
+        disabled={!isTbsMapped || restarting}
+        onClick={(event) => {
+          event.stopPropagation();
+          onRestart?.(stream);
+        }}
+        title={
+          isTbsMapped
+            ? stream.tbs_mappings.length > 1
+              ? "Choose a mapped TBS rendition to restart"
+              : "Restart mapped TBS stream"
+            : "No TBS mapping configured"
+        }
+        aria-label={
+          isTbsMapped
+            ? `Restart TBS stream for ${stream.name || "channel"}`
+            : `TBS restart unavailable for ${stream.name || "channel"}: no mapping`
+        }
+        className="absolute bottom-1 right-1 z-10 inline-flex h-6 w-6 items-center justify-center rounded-md text-base-content/60 transition-colors hover:bg-base-200 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-30"
+      >
+        {restarting ? (
+          <span className="loading loading-spinner loading-xs" aria-hidden="true" />
+        ) : (
+          <MdRestartAlt className="h-4 w-4" aria-hidden="true" />
+        )}
+      </button>
+    </article>
   );
 }

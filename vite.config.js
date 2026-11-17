@@ -4,4 +4,7 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [tailwindcss(), react()],
+  build: {
+    chunkSizeWarningLimit: 1000, // Limit raised to 1000 kB
+  },
 });

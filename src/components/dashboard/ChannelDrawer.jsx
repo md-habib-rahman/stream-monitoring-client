@@ -1,6 +1,75 @@
+import { useEffect, useRef, useState } from "react";
 import HlsPlayer from "../player/HlsPlayer";
+import { getTbsStream } from "../../services/tbsApi";
+import { showError } from "../../utils/notifications";
 
-export default function ChannelDrawer({ open, onClose, channel }) {
+export default function ChannelDrawer({
+  open,
+  onClose,
+  channel,
+  refreshKey = 0,
+}) {
+  const tbsMappings = channel?.tbs_mappings || [];
+  const tbsMappingsKey = JSON.stringify(tbsMappings);
+  const [tbsTelemetry, setTbsTelemetry] = useState([]);
+  const reportedFailures = useRef(new Set());
+
+  useEffect(() => {
+    const mappings = JSON.parse(tbsMappingsKey);
+    if (!open || mappings.length === 0) return undefined;
+
+    let active = true;
+    let controller = null;
+    const loadTelemetry = async () => {
+      controller?.abort();
+      controller = new AbortController();
+      const currentController = controller;
+      const results = await Promise.all(
+        mappings.map(async (mapping) => {
+          try {
+            const data = await getTbsStream(
+              mapping.tbs_device_id,
+              mapping.tbs_mid,
+              mapping.tbs_mod || "cdn",
+              { signal: currentController.signal },
+            );
+            return { mappingId: mapping.id, stream: data.stream, error: "" };
+          } catch (error) {
+            if (error.name === "CanceledError") return null;
+            return {
+              mappingId: mapping.id,
+              stream: null,
+              error:
+                error.response?.data?.error ||
+                "Failed to load TBS telemetry.",
+            };
+          }
+        }),
+      );
+      if (active && !currentController.signal.aborted) {
+        for (const result of results.filter(Boolean)) {
+          if (result.error) {
+            if (!reportedFailures.current.has(result.mappingId)) {
+              showError(result.error);
+              reportedFailures.current.add(result.mappingId);
+            }
+          } else {
+            reportedFailures.current.delete(result.mappingId);
+          }
+        }
+        setTbsTelemetry(results.filter(Boolean));
+      }
+    };
+
+    loadTelemetry();
+    const intervalId = window.setInterval(loadTelemetry, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      controller?.abort();
+    };
+  }, [open, tbsMappingsKey, refreshKey]);
+
   // If no channel is selected, do not render anything
   if (!channel) return null;
 
@@ -62,6 +131,83 @@ export default function ChannelDrawer({ open, onClose, channel }) {
               </div>
             )}
           </div>
+
+          <section className="mb-6 rounded-xl border border-base-300 p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="font-semibold">TBS8510 Telemetry</h3>
+              {tbsTelemetry.length > 0 &&
+                tbsTelemetry.some((item) => !item.stream && !item.error) && (
+                <span className="loading loading-spinner loading-xs" />
+                )}
+            </div>
+            {tbsMappings.length === 0 ? (
+              <p className="text-sm text-base-content/60">
+                This channel has no mapped TBS renditions.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {tbsMappings.map((mapping) => {
+                  const telemetry = tbsTelemetry.find(
+                    (item) => item.mappingId === mapping.id,
+                  );
+                  return (
+                    <div
+                      key={mapping.id}
+                      className="rounded-lg bg-base-200/50 p-3 text-sm"
+                    >
+                      <div className="mb-2 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h4 className="truncate font-semibold">
+                            {mapping.label}
+                          </h4>
+                          <p className="truncate text-xs text-base-content/60">
+                            {mapping.tbs_device_name || mapping.tbs_device_id} ·{" "}
+                            {mapping.tbs_mod.toUpperCase()} · {mapping.tbs_mid}
+                          </p>
+                        </div>
+                        {!telemetry && (
+                          <span className="loading loading-spinner loading-xs" />
+                        )}
+                      </div>
+                      {telemetry?.error ? (
+                        <p className="text-xs text-error">Telemetry unavailable</p>
+                      ) : telemetry?.stream ? (
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                          <span className="text-base-content/60">Status / lock</span>
+                          <span className="text-right">
+                            {telemetry.stream.status} / {telemetry.stream.lock}
+                          </span>
+                          <span className="text-base-content/60">Sync</span>
+                          <span className="text-right">
+                            {telemetry.stream.sync ? "Yes" : "No"}
+                          </span>
+                          <span className="text-base-content/60">Bitrate</span>
+                          <span className="text-right">
+                            {Number(
+                              telemetry.stream.bitrateBps || 0,
+                            ).toLocaleString()}{" "}
+                            bps
+                          </span>
+                          <span className="text-base-content/60">FPS / uptime</span>
+                          <span className="text-right">
+                            {telemetry.stream.fps} / {telemetry.stream.uptimeSec}s
+                          </span>
+                          <span className="text-base-content/60">Errors</span>
+                          <span className="text-right">
+                            {telemetry.stream.errors}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-base-content/60">
+                          Loading telemetry…
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
           {/* Quick Status Tags */}
           <div className="flex flex-wrap gap-2 mb-6">

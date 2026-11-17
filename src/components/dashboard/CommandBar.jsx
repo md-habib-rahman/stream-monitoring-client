@@ -1,52 +1,67 @@
-import { MdSearch, MdFilterList } from "react-icons/md";
+// Save as: src/components/dashboard/CommandBar.jsx
+import StatusDot from "../common/StatusDot";
+
+const FILTERS = ["ALL", "UP", "DEGRADED", "FROZEN", "DOWN"];
 
 export default function CommandBar({
   searchQuery,
   setSearchQuery,
   filterStatus,
   setFilterStatus,
+  counts = {},
 }) {
-  const filters = [
-    { id: "ALL", label: "All Streams" },
-    { id: "DOWN", label: "Critical (Down)" },
-    { id: "FROZEN", label: "Warnings" },
-    { id: "UP", label: "Healthy" },
-  ];
-
   return (
-    <div className="sticky top-0 z-40 flex flex-col md:flex-row justify-between items-center gap-4 bg-base-100/85 backdrop-blur-md px-6 py-4 border-b border-base-200/60 mb-8 shadow-sm">
-      {/* Search Input */}
-      <div className="relative w-full md:max-w-md">
-        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-          <MdSearch className="text-base-content/40 w-5 h-5" />
-        </div>
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <label className="relative block w-full lg:max-w-sm">
+        <span className="sr-only">Search streams</span>
+        <svg
+          viewBox="0 0 24 24"
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-base-content/50"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="11" cy="11" r="7" />
+          <path d="M21 21l-4.3-4.3" />
+        </svg>
         <input
-          type="text"
-          placeholder="Search name, broadcaster, or location..."
+          type="search"
+          className="input input-bordered w-full pl-9"
+          placeholder="Search by name, broadcaster or location"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="input input-bordered w-full pl-11 focus:input-primary transition-colors bg-base-200/30"
         />
-      </div>
+      </label>
 
-      {/* Filter Segmented Control */}
-      <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-        <MdFilterList className="text-base-content/40 w-5 h-5 hidden md:block shrink-0" />
-        <div className="join w-full md:w-auto bg-base-200/30 p-1 rounded-xl border border-base-200">
-          {filters.map((filter) => (
+      <div
+        role="group"
+        aria-label="Filter by status"
+        className="flex flex-wrap gap-2"
+      >
+        {FILTERS.map((filter) => {
+          const active = filterStatus === filter;
+
+          return (
             <button
-              key={filter.id}
-              onClick={() => setFilterStatus(filter.id)}
-              className={`btn btn-sm join-item flex-1 md:flex-auto border-none hover:bg-base-300 transition-all ${
-                filterStatus === filter.id
-                  ? "bg-base-100 shadow-sm text-base-content hover:bg-base-100 font-bold"
-                  : "bg-transparent text-base-content/60 font-medium"
+              key={filter}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setFilterStatus(filter)}
+              className={`btn btn-sm ${
+                active ? "btn-primary" : "btn-ghost border border-base-300"
               }`}
             >
-              {filter.label}
+              {filter !== "ALL" && <StatusDot status={filter} size="sm" />}
+              {filter === "ALL" ? "All" : filter}
+              {counts[filter] !== undefined && (
+                <span className="text-xs opacity-70">{counts[filter]}</span>
+              )}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
     </div>
   );

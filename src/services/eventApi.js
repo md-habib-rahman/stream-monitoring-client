@@ -1,11 +1,36 @@
-import axios from "axios";
+import api from "./api";
 
-const API_URL = "http://localhost:3001/api";
+export async function getEvents(page = 1, limit = 50, filters = {}) {
+  const params = new URLSearchParams({
+    page,
+    limit,
+  });
 
-export async function getEvents() {
-  const response = await axios.get(
-    `${API_URL}/events`,
-  );
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value) {
+      params.append(key, value);
+    }
+  });
 
-  return response.data;
+  const res = await api.get(`/events?${params.toString()}`);
+
+  return res.data;
+}
+
+export async function createEvent(event) {
+  const res = await api.post("/events", event);
+
+  return res.data;
+}
+
+export async function updateEvent(id, event) {
+  const res = await api.put(`/events/${id}`, event);
+
+  return res.data;
+}
+
+export async function deleteEvent(id) {
+  const res = await api.delete(`/events/${id}`);
+
+  return res.data;
 }

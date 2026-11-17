@@ -1,88 +1,54 @@
-import {
-  MdOutlineConnectedTv,
-  MdCheckCircleOutline,
-  MdErrorOutline,
-  MdOutlineAcUnit,
-} from "react-icons/md";
+// Save as: src/components/dashboard/SummaryCards.jsx
+import { PANEL } from "../../config/brand";
+import StatusDot from "../common/StatusDot";
 
-export default function DashboardStats({ streams }) {
+const STATUSES = ["UP", "DEGRADED", "FROZEN", "DOWN"];
+
+export default function SummaryCards({ streams = [] }) {
+  const counts = { UP: 0, DEGRADED: 0, FROZEN: 0, DOWN: 0 };
+
+  for (const stream of streams) {
+    if (counts[stream.status] !== undefined) counts[stream.status]++;
+  }
+
   const total = streams.length;
+  const attention = counts.DEGRADED + counts.FROZEN + counts.DOWN;
 
-  const up = streams.filter((s) => s.status === "UP").length;
-
-  const down = streams.filter((s) => s.status === "DOWN").length;
-
-  const frozen = streams.filter((s) => s.status === "FROZEN").length;
+  let headline = "Waiting for stream data";
+  if (total > 0) {
+    headline =
+      attention === 0
+        ? "All streams are healthy"
+        : `${attention} of ${total} ${total === 1 ? "stream needs" : "streams need"} attention`;
+  }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 w-full mb-8">
-      {/* Total Channels Card */}
-      <div className="bg-base-100 rounded-2xl p-6 border border-base-200 shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 w-14 h-14 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
-            <MdOutlineConnectedTv className="w-7 h-7" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-1">
-              Total Channels
-            </span>
-            <span className="text-3xl font-bold text-base-content leading-none">
-              {total}
-            </span>
-          </div>
-        </div>
+    <section
+      aria-label="Stream summary"
+      className={`rounded-xl p-6 lg:flex lg:items-center lg:justify-between lg:gap-10 ${PANEL.surface}`}
+    >
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">{headline}</h2>
+        <p className={`mt-1 text-sm ${PANEL.muted}`}>
+          {total > 0
+            ? `${counts.UP} of ${total} streams are up`
+            : "Status appears here after the first check."}
+        </p>
       </div>
 
-      {/* UP Status Card */}
-      <div className="bg-base-100 rounded-2xl p-6 border border-base-200 shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 w-14 h-14 bg-success/10 text-success rounded-xl flex items-center justify-center">
-            <MdCheckCircleOutline className="w-7 h-7" />
+      <dl className="mt-6 grid grid-cols-2 gap-y-5 sm:grid-cols-4 lg:mt-0">
+        {STATUSES.map((status) => (
+          <div key={status} className="border-l border-white/10 pl-4 sm:pl-6">
+            <dt className={`flex items-center gap-2 text-sm ${PANEL.muted}`}>
+              <StatusDot status={status} />
+              {status}
+            </dt>
+            <dd className="mt-1 text-3xl font-semibold tabular-nums">
+              {counts[status]}
+            </dd>
           </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-1">
-              Live (UP)
-            </span>
-            <span className="text-3xl font-bold text-base-content leading-none">
-              {up}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* DOWN Status Card */}
-      <div className="bg-base-100 rounded-2xl p-6 border border-base-200 shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 w-14 h-14 bg-error/10 text-error rounded-xl flex items-center justify-center">
-            <MdErrorOutline className="w-7 h-7" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-1">
-              Offline (DOWN)
-            </span>
-            <span className="text-3xl font-bold text-base-content leading-none">
-              {down}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* FROZEN Status Card */}
-      <div className="bg-base-100 rounded-2xl p-6 border border-base-200 shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-0 w-14 h-14 bg-warning/10 text-warning-content rounded-xl flex items-center justify-center">
-            <MdOutlineAcUnit className="w-7 h-7" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-1">
-              Frozen
-            </span>
-            <span className="text-3xl font-bold text-base-content leading-none">
-              {frozen}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+        ))}
+      </dl>
+    </section>
   );
 }
